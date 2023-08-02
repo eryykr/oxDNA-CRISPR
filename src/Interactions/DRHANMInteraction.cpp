@@ -1,14 +1,14 @@
 /*
- * DNANMInteraction.cpp
+ * DRHANMInteraction.cpp
  *
  *  Created on: Apr 17, 2019
  *      Author: jonah
- *  Inherits from the DNA2Interaction Class
- *  Uses DNA2 Model and ANM Protein Model
+ *  Inherits from the DRHInteraction Class
+ *  Uses DRH Model and ANM Protein Model
  */
 
 
-#include "DNANMInteraction.h"
+#include "DRHANMInteraction.h"
 #include <sstream>
 #include <fstream>
 
@@ -17,7 +17,7 @@
 #include "../Particles/ANMTParticle.h"
 
 
-DNANMInteraction::DNANMInteraction(bool btp) : DNA2Interaction() {
+DRHANMInteraction::DRHANMInteraction(bool btp) : DRHInteraction() {
 
     _angular = btp;
     //Protein Methods Function Pointers
@@ -49,8 +49,8 @@ DNANMInteraction::DNANMInteraction(bool btp) : DNA2Interaction() {
 }
 
 
-void DNANMInteraction::get_settings(input_file &inp){
-    this->DNA2Interaction::get_settings(inp);
+void DRHANMInteraction::get_settings(input_file &inp){
+    this->DRHInteraction::get_settings(inp);
 
     if(_angular){
         float kb_tmp = -1.f;
@@ -83,7 +83,7 @@ void DNANMInteraction::get_settings(input_file &inp){
 }
 
 
-void DNANMInteraction::read_parameter_file(std::vector<BaseParticle*> &particles){
+void DRHANMInteraction::read_parameter_file(std::vector<BaseParticle*> &particles){
     //Addition of Reading Parameter File
     auto valid_spring_params = [](int N, int x, int y, double d, char s, double k){
         if(x < 0 || x > N) throw oxDNAException("Invalid Particle ID %d in Parameter File", x);
@@ -178,13 +178,22 @@ void DNANMInteraction::read_parameter_file(std::vector<BaseParticle*> &particles
 }
 
 
-void DNANMInteraction::check_input_sanity(std::vector<BaseParticle*> &particles){
-    //this->DNA2Interaction::check_input_sanity(particles,N);
+void DRHANMInteraction::check_input_sanity(std::vector<BaseParticle*> &particles){
+    //this->DRHInteraction::check_input_sanity(particles,N);
     //Need to make own function that checks the input sanity
 }
 
 
-void DNANMInteraction::allocate_particles(std::vector<BaseParticle*> &particles) {
+void DRHANMInteraction::allocate_particles(std::vector<BaseParticle*> &particles) {
+
+    // checking that the number of nucleotides specified in input file is correct
+    if(ndna > 0){
+        if(_nucleotide_types.length() != ndna) {
+            throw oxDNAException("Number of nucleotides in the system (%d) doesn't match the length of 'nucleotide_types' (%d)",ndna, _nucleotide_types.length());
+        }
+    }
+    
+
     if (ndna==0 || ndnas==0) {
         OX_LOG(Logger::LOG_INFO, "No DNA Particles Specified, Continuing with just Protein Particles");
         if (_angular) for (int i = 0; i < npro; i++) particles[i] = new ANMTParticle();
@@ -192,11 +201,26 @@ void DNANMInteraction::allocate_particles(std::vector<BaseParticle*> &particles)
 
     } else if (npro == 0) {
         OX_LOG(Logger::LOG_INFO, "No Protein Particles Specified, Continuing with just DNA Particles");
-        for (int i = 0; i < ndna; i++) particles[i] = new DNANucleotide(this->_grooving);
+        for (int i = 0; i < ndna; i++) {
+            if(_nucleotide_types[i] == 'D') {
+                particles[i] = new DNANucleotide(this->_grooving);
+            } else {
+                particles[i] = new RNANucleotide();
+            }   
+        }
 
     } else {
         if (_firststrand > 0){
-            for (int i = 0; i < ndna; i++) particles[i] = new DNANucleotide(this->_grooving);
+
+            //Nucleic acids
+            for (int i = 0; i < ndna; i++) {
+                if(_nucleotide_types[i] == 'D') {
+                    particles[i] = new DNANucleotide(this->_grooving);
+                } else {
+                    particles[i] = new RNANucleotide();
+                }
+            }
+
             // Protein
             if (_angular) for (uint i = ndna; i < particles.size(); i++) particles[i] = new ANMTParticle();
             else for (uint i = ndna; i < particles.size(); i++) particles[i] = new ANMParticle();
@@ -204,16 +228,21 @@ void DNANMInteraction::allocate_particles(std::vector<BaseParticle*> &particles)
             // Protein
             if (_angular) for (int i = 0; i < npro; i++) particles[i] = new ANMTParticle();
             else for (int i = 0; i < npro; i++) particles[i] = new ANMParticle();
-
-            for (uint i = npro; i < particles.size(); i++) particles[i] = new DNANucleotide(this->_grooving);
+            //Nucleic acids
+            for (int i = npro; i < particles.size(); i++) {
+                if(_nucleotide_types[i-npro] == 'D') {
+                    particles[i] = new DNANucleotide(this->_grooving);    
+                } else {
+                    particles[i] = new RNANucleotide();
+                }
+            }
         }
     }
 }
 
 
-void DNANMInteraction::read_topology(int *N_strands, std::vector<BaseParticle*> &particles) {
+void DRHANMInteraction::read_topology(int *N_strands, std::vector<BaseParticle*> &particles) {
     int my_N, my_N_strands;
-
     char line[5120];
     std::ifstream topology;
     topology.open(this->_topology_filename, std::ios::in);
@@ -224,12 +253,11 @@ void DNANMInteraction::read_topology(int *N_strands, std::vector<BaseParticle*> 
     std::stringstream head(line);
 
     head >> my_N >> my_N_strands >> ndna >> npro >>ndnas;
-    if (head.fail()) throw oxDNAException("Problem with header make sure the format is correct for DNANM Interaction");
+    if (head.fail()) throw oxDNAException("Problem with header make sure the format is correct for DRHANM Interaction");
 
     if(my_N_strands < 0 || my_N_strands > my_N || ndna > my_N || ndna < 0 || npro > my_N || npro < 0 || ndnas < 0 || ndnas > my_N) {
-        throw oxDNAException("Problem with header make sure the format is correct for DNANM Interaction");
+        throw oxDNAException("Problem with header make sure the format is correct for DRHANM Interaction");
     }
-
 
     int strand, i = 0;
     while (topology.good()) {
@@ -289,12 +317,16 @@ void DNANMInteraction::read_topology(int *N_strands, std::vector<BaseParticle*> 
 
             i++;
         }
+
         if (strand > 0) {
             char base[256];
             int tmpn3, tmpn5;
             ss >> base >> tmpn3 >> tmpn5;
 
-            auto *p = dynamic_cast<DNANucleotide *> (particles[i]);
+            
+            //auto *p = dynamic_cast<DNANucleotide *> (particles[i]);
+            //above line causes segfault
+            BaseParticle *p = particles[i];   
 
             if (tmpn3 < 0) p->n3 = P_VIRTUAL;
             else p->n3 = particles[tmpn3];
@@ -345,10 +377,12 @@ void DNANMInteraction::read_topology(int *N_strands, std::vector<BaseParticle*> 
 
     // read parameter file
     read_parameter_file(particles);
+
 }
 
 
-number DNANMInteraction::pair_interaction(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces){
+number DRHANMInteraction::pair_interaction(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces){
+    
     int interaction_type = get_id(p->btype) + get_id(q->btype);
 
     if (interaction_type == 0 || interaction_type == 2){
@@ -358,10 +392,13 @@ number DNANMInteraction::pair_interaction(BaseParticle *p, BaseParticle *q, bool
     if (interaction_type == 1) return this->pair_interaction_nonbonded(p, q, compute_r, update_forces);
 
     return 0.f;
+    
+    
 }
 
 
-number DNANMInteraction::pair_interaction_bonded(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+number DRHANMInteraction::pair_interaction_bonded(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+    
     if(compute_r)
         if (q != P_VIRTUAL && p != P_VIRTUAL)
             _computed_r = this->_box->min_image(p->pos, q->pos);
@@ -369,10 +406,14 @@ number DNANMInteraction::pair_interaction_bonded(BaseParticle *p, BaseParticle *
     int interaction_type = get_id(p->btype) + get_id(q->btype);
     if (interaction_type == 0){ // dna-dna
         if(!this->_check_bonded_neighbour(&p, &q, compute_r)) return (number) 0;
+        /*
         number energy = _backbone(p,q,compute_r,update_forces);
         energy += _bonded_excluded_volume(p,q,compute_r,update_forces);
         energy += _stacking(p,q,compute_r,update_forces);
         return energy;
+        */
+        return DRHInteraction::pair_interaction_bonded(p, q, compute_r, update_forces);
+
     } else if (interaction_type == 2){ // protein-protein
         if(_angular){
             if (!p->is_bonded(q)) return 0.f;
@@ -390,10 +431,13 @@ number DNANMInteraction::pair_interaction_bonded(BaseParticle *p, BaseParticle *
         return 0.f;
 
     // Expect Topology to not contain Bonds b/t protein & DNA
+    
+   
 }
 
 
-number DNANMInteraction::pair_interaction_nonbonded(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+number DRHANMInteraction::pair_interaction_nonbonded(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+    
     if (compute_r)
         _computed_r = this->_box->min_image(p->pos, q->pos);
 
@@ -403,12 +447,16 @@ number DNANMInteraction::pair_interaction_nonbonded(BaseParticle *p, BaseParticl
 
     if (interaction_type == 0) { //DNA-DNA Interaction
         if (rnorm >= _sqr_rcut) return (number) 0.f;
+        /*
         number energy = _nonbonded_excluded_volume(p, q, compute_r, update_forces);
         energy += _hydrogen_bonding(p, q, compute_r, update_forces);
         energy += _cross_stacking(p, q, compute_r, update_forces);
         energy += _coaxial_stacking(p, q, compute_r, update_forces);
         energy += _debye_huckel(p, q, compute_r, update_forces);
         return energy;
+        */
+        return DRHInteraction::pair_interaction_nonbonded(p, q, compute_r, update_forces);
+
     } else if (interaction_type == 2) { // protein-protein
         if (rnorm >= _pro_sqr_rcut) return (number) 0.f;
         number energy = _protein_exc_volume(p, q, compute_r, update_forces);
@@ -421,10 +469,12 @@ number DNANMInteraction::pair_interaction_nonbonded(BaseParticle *p, BaseParticl
     }
 
     return 0.f;
+    
+   
 }
 
 
-number DNANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces)
+number DRHANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces)
 {
     BaseParticle *protein;
     BaseParticle *nuc;
@@ -449,8 +499,20 @@ number DNANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle *
     else
         return 0.f;
 
-    LR_vector r_to_back = rcenter  - nuc->int_centers[DNANucleotide::BACK];
-    LR_vector r_to_base = rcenter  - nuc->int_centers[DNANucleotide::BASE];
+
+    //LR_vector r_to_back = rcenter  - nuc->int_centers[DNANucleotide::BACK];
+    //LR_vector r_to_base = rcenter  - nuc->int_centers[DNANucleotide::BASE];
+    LR_vector r_to_back;
+    LR_vector r_to_base;
+    if(this->_is_DNA(nuc)) {
+        r_to_back = rcenter - nuc->int_centers[DNANucleotide::BACK];
+        r_to_base = rcenter - nuc->int_centers[DNANucleotide::BASE];
+    } 
+    else {
+        r_to_back = rcenter - nuc->int_centers[RNANucleotide::BACK];
+        r_to_base = rcenter - nuc->int_centers[RNANucleotide::BASE];
+    }
+
 
     LR_vector torquenuc(0,0,0);
     auto energy = (number) 0.f;
@@ -460,7 +522,14 @@ number DNANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle *
         energy = _protein_dna_repulsive_lj(r_to_back, force, update_forces, _pro_backbone_sigma, _pro_backbone_b, _pro_backbone_rstar,_pro_backbone_rcut,_pro_backbone_stiffness);
         //printf("back-pro %d %d %f\n",p->index,q->index,energy);
         if (update_forces) {
-            torquenuc = nuc->int_centers[DNANucleotide::BACK].cross(-force);
+
+            //torquenuc = nuc->int_centers[DNANucleotide::BACK].cross(-force);
+            if(this->_is_DNA(nuc)) {
+                torquenuc = nuc->int_centers[DNANucleotide::BACK].cross(-force);
+            } else {
+                torquenuc = nuc->int_centers[RNANucleotide::BACK].cross(-force);
+            }
+
             nuc->torque += nuc->orientationT * torquenuc;
             nuc->force -= force;
             protein->force += force;
@@ -475,7 +544,14 @@ number DNANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle *
 //        printf("pro %d dna %d\n", protein->index, nuc->index);
         energy += _protein_dna_repulsive_lj(r_to_base, force, update_forces, _pro_base_sigma, _pro_base_b, _pro_base_rstar, _pro_base_rcut, _pro_base_stiffness);
         if(update_forces) {
-            torquenuc = nuc->int_centers[DNANucleotide::BASE].cross(-force);
+
+            //torquenuc = nuc->int_centers[DNANucleotide::BASE].cross(-force);
+            if(this->_is_DNA(nuc)) {
+                torquenuc = nuc->int_centers[DNANucleotide::BASE].cross(-force);
+            } else {
+                torquenuc = nuc->int_centers[RNANucleotide::BASE].cross(-force);
+            }
+
             nuc->torque += nuc->orientationT * torquenuc;
             nuc->force -= force;
             protein->force += force;
@@ -490,7 +566,7 @@ number DNANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle *
 }
 
 
-number DNANMInteraction::_protein_dna_repulsive_lj(const LR_vector &r, LR_vector &force, bool update_forces, number &sigma, number &b, number &rstar, number &rcut, number &stiffness) {
+number DRHANMInteraction::_protein_dna_repulsive_lj(const LR_vector &r, LR_vector &force, bool update_forces, number &sigma, number &b, number &rstar, number &rcut, number &stiffness) {
     // this is a bit faster than calling r.norm()
     number rnorm = SQR(r.x) + SQR(r.y) + SQR(r.z);
     number energy = (number) 0;
@@ -516,8 +592,8 @@ number DNANMInteraction::_protein_dna_repulsive_lj(const LR_vector &r, LR_vector
 }
 
 
-void DNANMInteraction::init() {
-    DNA2Interaction::init();
+void DRHANMInteraction::init() {
+    DRHInteraction::init();
     ndna=0, npro=0, ndnas =0;
     //let's try this
     _pro_backbone_sigma = 0.57f;
@@ -544,7 +620,7 @@ void DNANMInteraction::init() {
 }
 
 //Functions almost Identical to those in ANMInteraction
-number DNANMInteraction::_protein_repulsive_lj(const LR_vector &r, LR_vector &force, bool update_forces) {
+number DRHANMInteraction::_protein_repulsive_lj(const LR_vector &r, LR_vector &force, bool update_forces) {
     // this is a bit faster than calling r.norm()
     //changed to a quartic form
     number rnorm = SQR(r.x) + SQR(r.y) + SQR(r.z);
@@ -570,7 +646,7 @@ number DNANMInteraction::_protein_repulsive_lj(const LR_vector &r, LR_vector &fo
 }
 
 
-number DNANMInteraction::_protein_exc_volume(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+number DRHANMInteraction::_protein_exc_volume(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
     LR_vector force(0,0,0);
     number energy =  _protein_repulsive_lj(_computed_r, force, update_forces);
 
@@ -588,7 +664,7 @@ number DNANMInteraction::_protein_exc_volume(BaseParticle *p, BaseParticle *q, b
 }
 
 
-number DNANMInteraction::_protein_spring(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+number DRHANMInteraction::_protein_spring(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
 
     std::pair <int,int> keys (std::min(p->index, q->index), std::max(p->index, q->index));
 
@@ -611,7 +687,7 @@ number DNANMInteraction::_protein_spring(BaseParticle *p, BaseParticle *q, bool 
 }
 
 
-number DNANMInteraction::_protein_ang_pot(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+number DRHANMInteraction::_protein_ang_pot(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
     // Get Angular Parameters
     std::vector<double> &ang_params = _ang_vals[p->index];
     double &a0 = ang_params[0];
@@ -678,7 +754,7 @@ number DNANMInteraction::_protein_ang_pot(BaseParticle *p, BaseParticle *q, bool
 }
 
 
-void DNANMInteraction::load_massfile(std::string &filename) {
+void DRHANMInteraction::load_massfile(std::string &filename) {
     std::fstream mass_stream;
     int masstypes;
     mass_stream.open(filename, std::ios::in);
@@ -694,15 +770,42 @@ void DNANMInteraction::load_massfile(std::string &filename) {
         throw oxDNAException("Could Not Load Mass File, Aborting");
 }
 
-int DNANMInteraction::get_id(int btype){
+int DRHANMInteraction::get_id(int btype){
     // takes btype return whether dna or protein
     // 0 is dna
     // >=5 is protein
     return (btype <= 4) ? 0: 1;
 };
 
-DNANMInteraction::~DNANMInteraction() = default;
+DRHANMInteraction::~DRHANMInteraction() = default;
 
 
+
+//for some reason not adding this again causes errors
+bool DRHANMInteraction::_check_bonded_neighbour(BaseParticle **p, BaseParticle **q, bool compute_r) {
+    if(*q == P_VIRTUAL) {
+        *q = (*p)->n3;
+    }
+    else {
+        if(*q != (*p)->n3) {
+            if(*p == (*q)->n3) {
+                BaseParticle *tmp = *q;
+                *q = *p;
+                *p = tmp;
+                if(!compute_r) {
+                    _computed_r = -_computed_r;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+    }
+    if((*p)->n3 == P_VIRTUAL) {
+        return false;
+    }
+
+    return true;
+}
 
 

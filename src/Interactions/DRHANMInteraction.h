@@ -7,7 +7,7 @@
  * 
  * To use the oxDNA2 model with ANM Protein, set
  *
- * interaction_type = DNANM
+ * interaction_type = DRHANM
  *
  * in the input file
  *
@@ -18,13 +18,13 @@
  massfile = string (set massfile for simulations w/ different massed items)
  */
 
-#ifndef DNANM_INTERACTION_H
-#define DNANM_INTERACTION_H
+#ifndef DRHANM_INTERACTION_H
+#define DRHANM_INTERACTION_H
 
-#include "DNA2Interaction.h"
+#include "DRHInteraction.h"
 
 
-class DNANMInteraction: public DNA2Interaction {
+class DRHANMInteraction: public DRHInteraction {
 
 protected:
     int ndna;//How many particles of DNA type: Used in allocate_particles
@@ -59,9 +59,9 @@ public:
     bool _angular;
 
     int get_id(int btype);
-    explicit DNANMInteraction(bool btp); //btn controls whether bending/torsion potential is applied
+    explicit DRHANMInteraction(bool btp); //btn controls whether bending/torsion potential is applied
     virtual void load_massfile(std::string &filename);
-    ~DNANMInteraction() override;
+    ~DRHANMInteraction() override;
     void get_settings(input_file &inp) override;
     void allocate_particles(std::vector<BaseParticle *> &particles) override;
     void read_topology(int *N_strands, std::vector<BaseParticle *> &particles) override;
@@ -79,6 +79,7 @@ public:
     virtual number _protein_spring(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces);
     virtual number _protein_ang_pot(BaseParticle *p, BaseParticle*q, bool compute_r, bool update_forces);
 
+    bool _check_bonded_neighbour(BaseParticle **p, BaseParticle **q, bool compute_r);
 };
 
-#endif /* DNANM_INTERACTION_H */
+#endif /* DRHANM_INTERACTION_H */

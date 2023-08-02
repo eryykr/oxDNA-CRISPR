@@ -15,6 +15,7 @@
 #include "../Interactions/DNA2Interaction.h"
 #include "../Interactions/RNAInteraction2.h"
 #include "../Interactions/DNANMInteraction.h"
+#include "../Interactions/DRHANMInteraction.h"
 #include "../Managers/SimManager.h"
 
 using namespace std;
@@ -232,10 +233,22 @@ number FFS_MD_CPUBackend::pair_interaction_nonbonded_DNA_with_op(BaseParticle *p
                 _op.add_hb(q->index, p->index, energy);
             }
         }
-        energy = _interaction->pair_interaction_nonbonded(p,q,compute_r, update_forces) ;
-    }
-    else
-    {
+        energy = _interaction->pair_interaction_nonbonded(p,q,compute_r, update_forces);
+
+    } else if(dynamic_cast<DRHANMInteraction *>(_interaction.get()) != NULL ) {
+        DRHANMInteraction *drhanm_interaction = dynamic_cast<DRHANMInteraction *>(_interaction.get());
+        int interaction_type = drhanm_interaction->get_id(p->btype) + drhanm_interaction->get_id(q->btype);
+
+        if (interaction_type == 0) { //DNA-DNA Interaction
+            number h_energy = _interaction->pair_interaction_term(DNAInteraction::HYDROGEN_BONDING, p, q, false, update_forces);
+            if(h_energy <= MAX_BOND_CUTOFF)
+            {
+                _op.add_hb(q->index, p->index, energy);
+            }
+        }
+        energy = _interaction->pair_interaction_nonbonded(p,q,compute_r, update_forces);
+
+    } else {
         energy = _interaction->pair_interaction_term(DNAInteraction::HYDROGEN_BONDING, p, q, false, update_forces);
 
         if(energy <= MAX_BOND_CUTOFF) {

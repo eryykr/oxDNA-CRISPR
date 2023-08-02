@@ -126,6 +126,8 @@ SET(interactions_SOURCES
 	Interactions/KFInteraction.cpp
 	Interactions/CustomInteraction.cpp
 	Interactions/ANMInteraction.cpp
+	Interactions/DRHInteraction.cpp	
+	Interactions/DRHANMInteraction.cpp
 )
 
 SET(move_SOURCES
