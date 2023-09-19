@@ -46,6 +46,8 @@ DRHANMInteraction::DRHANMInteraction(bool btp) : DRHInteraction() {
               {7, 1.f}, {8, 1.f}, {9, 1.f}, {10, 1.f},{11, 1.f}, {12, 1.f},
               {13, 1.f}, {14, 1.f}, {15, 1.f}, {16, 1.f}, {17, 1.f}, {18, 1.f},
               {19, 1.f}, {20, 1.f}, {21, 1.f}, {22, 1.f}, {23, 1.f}, {24, 1.f}};
+
+
 }
 
 
@@ -80,6 +82,9 @@ void DRHANMInteraction::get_settings(input_file &inp){
         OX_LOG(Logger::LOG_INFO, "Using Provided Massfile");
         load_massfile(_massfile);
     }
+
+
+
 }
 
 
@@ -521,6 +526,8 @@ number DRHANMInteraction::_protein_dna_exc_volume(BaseParticle *p, BaseParticle 
     if(r_to_back.norm() < _pro_backbone_sqr_rcut) {
         energy = _protein_dna_repulsive_lj(r_to_back, force, update_forces, _pro_backbone_sigma, _pro_backbone_b, _pro_backbone_rstar,_pro_backbone_rcut,_pro_backbone_stiffness);
         //printf("back-pro %d %d %f\n",p->index,q->index,energy);
+
+
         if (update_forces) {
 
             //torquenuc = nuc->int_centers[DNANucleotide::BACK].cross(-force);
@@ -647,6 +654,8 @@ number DRHANMInteraction::_protein_repulsive_lj(const LR_vector &r, LR_vector &f
 
 
 number DRHANMInteraction::_protein_exc_volume(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+
+
     LR_vector force(0,0,0);
     number energy =  _protein_repulsive_lj(_computed_r, force, update_forces);
 
@@ -665,6 +674,8 @@ number DRHANMInteraction::_protein_exc_volume(BaseParticle *p, BaseParticle *q, 
 
 
 number DRHANMInteraction::_protein_spring(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+    
+
 
     std::pair <int,int> keys (std::min(p->index, q->index), std::max(p->index, q->index));
 
@@ -688,6 +699,9 @@ number DRHANMInteraction::_protein_spring(BaseParticle *p, BaseParticle *q, bool
 
 
 number DRHANMInteraction::_protein_ang_pot(BaseParticle *p, BaseParticle *q, bool compute_r, bool update_forces) {
+
+
+
     // Get Angular Parameters
     std::vector<double> &ang_params = _ang_vals[p->index];
     double &a0 = ang_params[0];

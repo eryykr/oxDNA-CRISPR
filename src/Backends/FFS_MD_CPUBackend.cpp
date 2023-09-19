@@ -230,7 +230,7 @@ number FFS_MD_CPUBackend::pair_interaction_nonbonded_DNA_with_op(BaseParticle *p
             number h_energy = _interaction->pair_interaction_term(DNAInteraction::HYDROGEN_BONDING, p, q, false, update_forces);
             if(h_energy <= MAX_BOND_CUTOFF)
             {
-                _op.add_hb(q->index, p->index, energy);
+                _op.add_hb(q->index, p->index, h_energy);
             }
         }
         energy = _interaction->pair_interaction_nonbonded(p,q,compute_r, update_forces);
@@ -240,10 +240,10 @@ number FFS_MD_CPUBackend::pair_interaction_nonbonded_DNA_with_op(BaseParticle *p
         int interaction_type = drhanm_interaction->get_id(p->btype) + drhanm_interaction->get_id(q->btype);
 
         if (interaction_type == 0) { //DNA-DNA Interaction
-            number h_energy = _interaction->pair_interaction_term(DNAInteraction::HYDROGEN_BONDING, p, q, false, update_forces);
+            number h_energy = _interaction->pair_interaction_term(DRHInteraction::HYDROGEN_BONDING, p, q, false, update_forces);
             if(h_energy <= MAX_BOND_CUTOFF)
             {
-                _op.add_hb(q->index, p->index, energy);
+                _op.add_hb(q->index, p->index, h_energy);
             }
         }
         energy = _interaction->pair_interaction_nonbonded(p,q,compute_r, update_forces);
