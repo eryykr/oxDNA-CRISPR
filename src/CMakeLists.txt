@@ -128,6 +128,7 @@ SET(interactions_SOURCES
 	Interactions/ANMInteraction.cpp
 	Interactions/DRHInteraction.cpp	
 	Interactions/DRHANMInteraction.cpp
+	Interactions/DRHANMInteraction_relax.cpp
 
 )
 

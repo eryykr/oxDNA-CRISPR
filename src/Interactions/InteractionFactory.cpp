@@ -34,7 +34,7 @@
 #include "CGDNAInteraction.h"
 #include "DRHInteraction.h"
 #include "DRHANMInteraction.h"
-//#include "DRHANMInteraction_relax.h"
+#include "DRHANMInteraction_relax.h"
 
 InteractionPtr InteractionFactory::make_interaction(input_file &inp) {
 	// The default interaction is DNAInteraction
@@ -80,7 +80,7 @@ InteractionPtr InteractionFactory::make_interaction(input_file &inp) {
 	else if(inter_type.compare("RNACT") == 0) return std::make_shared<RNANMInteraction>(true);
 	else if(inter_type.compare("DRH") == 0) return std::make_shared<DRHInteraction>();
 	else if(inter_type.compare("DRHANM") == 0) return std::make_shared<DRHANMInteraction>(false);
-	//else if(inter_type.compare("DRHANM_relax") == 0) return std::make_shared<DRHANMInteraction_relax>(false);
+	else if(inter_type.compare("DRHANM_relax") == 0) return std::make_shared<DRHANMInteraction_relax>(false);
 	else {
 		InteractionPtr res = PluginManager::instance()->get_interaction(inter_type);
 		if(res == NULL) throw oxDNAException("Interaction '%s' not found. Aborting", inter_type.c_str());
